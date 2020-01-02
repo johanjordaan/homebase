@@ -1,0 +1,65 @@
+version: '2'
+services:
+  dns:
+    container_name: dnsmasq
+    network_mode: host
+    restart: always
+    image: dnsmasq
+    volumes:
+      - ./dnsdhcp/dnsmasq.conf:/etc/dnsmasq.conf
+      - ./dnsdhcp/dnsmasq_static_hosts.conf:/etc/dnsmasq_static_hosts.conf
+    ports:
+      - "53:53/udp"
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - TZ=Australia/Sydney
+
+  es:
+    depends_on:
+      - dns
+    container_name: es
+    restart: always
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.5.1
+    volumes:
+      - ./es/data:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+      - 9300:9300
+    environment:
+      - discovery.type=single-node
+      - TZ=Australia/Sydney
+
+
+  kibana:
+    depends_on:
+      - dns
+      - es
+    container_name: kibana
+    restart: always
+    image: docker.elastic.co/kibana/kibana:7.5.1
+    ports:
+      - 5601:5601
+    external_links:
+      - es:elasticsearch
+    environment:
+      - TZ=Australia/Sydney       
+
+  logstash:
+    depends_on:
+      - dns
+      - es
+    container_name: logstash
+    restart: always
+    image: docker.elastic.co/logstash/logstash:7.5.1
+    volumes:
+      - ./logstash/pipeline/:/usr/share/logstash/pipeline
+    ports:
+      - 514:5050
+      - "514:5050/udp"
+    external_links:
+      - es:elasticsearch
+    environment:
+      - TZ=Australia/Sydney
+
+
